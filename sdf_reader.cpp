@@ -2,9 +2,10 @@
 #include <string>
 #include <iostream>
 #include <vector>
+#include"./third/json/single_include/nlohmann/json.hpp"
 #define print(something) std::cout<< something <<std::endl;
 
-using tensor3 = std::vector<std::vector<std::vector<float>>>;
+using array3d = std::vector<std::vector<std::vector<float>>>;
 using namespace std;
 
 class SignedDistanceField
@@ -12,10 +13,12 @@ class SignedDistanceField
   public:
     SignedDistanceField(string filename);
     float compute_sd(vector<float> point);
+    void dump_json();
 
-    tensor3 data;
+    array3d data;
     vector<int> Nxyz;
-    vector<float> dxyz;
+    vector<float> bmin;
+    float dx;
 
   private:
     vector<int> where_am_i(vector<float> point);
@@ -25,12 +28,17 @@ SignedDistanceField::SignedDistanceField(string filename){
   ifstream infile(filename);
   string line;
   getline(infile, line);
-  int Nx, Ny, Nz, N;
-  float dx, dy, dz;
+  int Nx, Ny, Nz;
   sscanf(line.data(), "%d %d %d", &Nx, &Ny, &Nz);
-  N = Nx*Ny*Nz;
+
+  float bmin_x, bmin_y, bmin_z;
   getline(infile, line);
-  sscanf(line.data(), "%f %f %f", &dx, &dy, &dz);
+  sscanf(line.data(), "%f %f %f", &bmin_x, &bmin_y, &bmin_z);
+
+  float dx_;
+  getline(infile, line);
+  sscanf(line.data(), "%f", &dx_);
+
 
   float value;
   vector<float> data_raw;
@@ -40,7 +48,7 @@ SignedDistanceField::SignedDistanceField(string filename){
     data_raw.push_back(value);
   }
 
-  tensor3 data_;
+  array3d data_;
   for(int i = 0; i < Nx; i++){
     vector<vector<float>> vec_j;
     for(int j = 0; j < Ny; j++){
@@ -54,20 +62,28 @@ SignedDistanceField::SignedDistanceField(string filename){
     data_.push_back(vec_j);
   }
   vector<int> Nxyz_{Nx, Ny, Nz};
-  vector<float> dxyz_{dx, dy, dz};
+  vector<float> bmin_{bmin_x, bmin_y, bmin_z};
 
   // initialization
   data = data_;
   Nxyz = Nxyz_;
-  dxyz = dxyz_;
+  bmin = bmin_;
+  dx = dx_;
 }
 
-float signed_distance(vector<float> point, tensor3 sdf){
-}
-
-vector<int> where_am_i(vector<float> point){
+void SignedDistanceField::dump_json(){
+  nlohmann::json j;
+  j["Nxyz"] = Nxyz;
+  j["bmin"] = bmin;
+  j["dx"] = dx;
+  j["data"] = data;
+  string filename = "./tmp.json";
+  ofstream ofs(filename.c_str());
+  ofs<<j<<endl;
 }
 
 int main(){
+  SignedDistanceField sdf("sdffiles/gripper_palm.sdf");
+  sdf.dump_json();
 }
 
